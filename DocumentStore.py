@@ -1,5 +1,6 @@
 import json
 
+
 class Paragraph:
     paragraph_id = None
     data = None
@@ -24,6 +25,10 @@ class Document:
 
     def get_paragraph_by_id(self, para_id):
         return self.paragraphs[para_id]
+
+    def get_tokens(self):
+        # TODO: return the tokens of all paragraphs
+        return ["geg", "c", "greg"]
 
 
 class DocumentManager:
