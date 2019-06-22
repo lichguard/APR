@@ -1,7 +1,15 @@
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+
+from DocumentStore import *
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+import Stemmer
 from collections import defaultdict
+
+english_stemmer = Stemmer.Stemmer('en')
+ps = PorterStemmer()
 
 
 def process(s):
@@ -14,7 +22,6 @@ def process(s):
     Returns:
         Array: An array of tokens that after stemming with no stop words
     """
-    ps = PorterStemmer()
 
     stop_words = set(stopwords.words('english'))
 
@@ -29,21 +36,8 @@ def process(s):
     return filtered_sentence
 
 
-def create_inverse_index(ds):
-    """
-    This function creates an inverted index
+def process_and_tokenize_string(data):
+    return english_stemmer.stemWords(word_tokenize(data.lower()))
 
-    Parameters:
-        ds (DocumentManager): this function accepts a DocumentManager that has data.
 
-    Returns:
-        Dictionary: A dictionary with with words as key and the corresponding list composed of integers that
-        refers to the document the word was found
 
-    Example:
-    {"word1": [1,76,346], "word2": [123,646,222]}
-    """
-    inv_index = defaultdict(list)
-    for idx, doc in enumerate(ds.docs):
-        for token in doc.get_tokens():
-            inv_index[token].append(idx)
