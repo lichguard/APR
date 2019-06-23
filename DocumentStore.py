@@ -50,17 +50,18 @@ class DocumentManager:
     logger = logging.getLogger('DocumentManager')
     docs = None
     token_set = None
+    file_name = None
 
-    def __init__(self):
-        pass
+    def __init__(self, file_name):
+        self.file_name = file_name
 
-    def create(self, file_path):
+    def create(self):
         # time and log
         start = time.time()
         self.logger.info("Creating documents...")
 
         # load file from directory
-        with open(file_path) as f:
+        with open(self.file_name + ".json") as f:
             docs_json = json.load(f)
 
         # init variables
@@ -80,16 +81,40 @@ class DocumentManager:
     def get_document_by_id(self, doc_id):
         return self.docs[doc_id]
 
+    def load(self):
+        f = open(self.file_name + "_ds.arp", 'rb')
+        tmp_dict = pickle.load(f)
+        f.close()
+        self.__dict__.clear()
+        self.__dict__.update(tmp_dict)
+        self.logger.info("Successfully saved document store data to " + self.file_name)
+
     def save(self):
-        f = open(self.file_name, 'wb')
+        f = open(self.file_name + "_ds.arp", 'wb')
+        pickle.dump(self.__dict__, f, 2)
+        f.close()
+        self.logger.info("Successfully loaded document store data from " + self.file_name)
+
+    """
+    def save(self):
+        f = open(self.file_name + ".dat", 'wb')
         pickle.dump(self.docs, f)
+        f.close()
+
+        f = open(self.file_name + "token_set.dat", 'wb')
+        pickle.dump(self.token_set, f)
         f.close()
 
         self.logger.info("Successfully saved document store data to " + self.file_name)
 
     def load(self):
-        f = open(self.file_name, 'rb')
+        f = open(self.file_name + ".dat", 'rb')
         self.docs = pickle.load(f)
         f.close()
 
+        f = open(self.file_name + "token_set.dat", 'rb')
+        self.token_set = pickle.load(f)
+        f.close()
+
         self.logger.info("Successfully loaded document store data from " + self.file_name)
+"""

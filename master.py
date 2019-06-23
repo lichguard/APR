@@ -1,6 +1,5 @@
-from DocumentStore import *
+from DocumentStore import DocumentManager
 from indexer import Indexer
-from utils import *
 import logging
 
 
@@ -9,16 +8,22 @@ def main():
     run()
 
 
+DOC_SOURCE_FILE = "data\\document_passages"
+
+
 def run():
-    ds = DocumentManager()
-    ds.create("data\\document_passages.json")
-    # ds.save()
-    # ds.load()
 
-    indexer = Indexer()
-    indexer.index(ds)
+    ds = DocumentManager(DOC_SOURCE_FILE)
+    ds.create()
+    ds.save()
+    #ds.load()
 
-    top_docs = indexer.execute_query("try to work smarter not harder working hard")
+    indexer = Indexer(ds)
+    indexer.index()
+    #indexer.save()
+    #indexer.load()
+
+    top_docs = indexer.execute_query("the highest mountain arg")
 
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")
