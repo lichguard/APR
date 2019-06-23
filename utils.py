@@ -1,10 +1,13 @@
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem.porter import *
 from nltk.tokenize import word_tokenize
 import Stemmer
 
+nltk.download('stopwords')
 english_stemmer = Stemmer.Stemmer('en')
 ps = PorterStemmer()
+stop_words = set(stopwords.words('english'))
 
 def process(s):
     """
@@ -31,8 +34,11 @@ def process(s):
 
 
 def process_and_tokenize_string(data):
-    #return data.split(" ")
-    return english_stemmer.stemWords(word_tokenize(data.lower()))
+    # return data.split(" ")
+
+    tokens = english_stemmer.stemWords(word_tokenize(data.lower()))
+    return [word for word in tokens if word not in stop_words]
+    # return english_stemmer.stemWords(word_tokenize(data.lower()))
 
 
 

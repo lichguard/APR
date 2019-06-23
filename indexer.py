@@ -5,6 +5,8 @@ import logging
 import time
 import operator
 from sklearn.metrics.pairwise import linear_kernel
+from utils import process_and_tokenize_string
+import marisa_trie
 
 
 class TopDocs:
@@ -20,25 +22,50 @@ class TopDocs:
         output = "\n"
         for key in self.scores.keys():
             output += "doc_id: " + str(key) + " score: " + str(self.scores[key])
-            # self.document_store[key].get_text() + " \n"
+            # self.document_store.docs[key].get_text() + " \n"
         return output
 
     def display(self):
         return sorted(self.scores.items(), key=operator.itemgetter(1), reverse=True)
 
 
+class PostingList:
+    pass
+
+
 class Indexer:
+    """
+      A class used to index DocumentStore
+
+      Attributes
+      ----------
+      logger : Logger
+          a formatted string to print out what the animal says
+      posting_list : PostingList
+          a formatted string to print out what the animal says
+      document_store : DocumentStore
+          will be written
+      tf_idf_vectorizer : StemmedTfidfVectorizer
+          the sound that the animal makes
+      tf_idf : sparse matrix, [n_samples, n_features]]
+          the number of legs the animal has (default 4)
+
+      Methods
+      -------
+      index(DocumentStore)
+          Prints the animals name and what sound it makes
+      """
     logger = logging.getLogger('Indexer')
 
-    inv_index = None
-    docs = None
+    posting_list = None
+    document_store = None
     tf_idf_vectorizer = None
     tf_idf = None
 
-    def index(self, docs):
+    def index(self, document_store):
         start = time.time()
         self.logger.info("Indexing...")
-        self.docs = docs
+        self.document_store = document_store
         self.create_inverse_index()
         self.create_tf_idf()
         end = time.time()
@@ -56,10 +83,22 @@ class Indexer:
         """
         start = time.time()
         self.logger.info("Creating inverse index...")
-        self.inv_index = defaultdict(set)
-        for idx, doc in enumerate(self.docs):
-            for token in doc.get_tokens():
-                self.inv_index[token].add(idx)
+
+        trie_tree = marisa_trie.Trie(self.document_store.token_set)
+        word2docs = [defaultdict(list(int)) for _ in range(len(self.document_store.token_set))]
+
+        for doc in self.document_store.docs:
+            for idx, token in enumerate(doc.get_tokens()):
+                trie_token_index = trie_tree[token]
+
+                print("token: " + str(token) + " trie_token_index: " + str(trie_token_index) + " doc.doc_id: "
+                      + str(doc.doc_id) + " idx: " + str(idx))
+                word2docs[trie_token_index][doc.doc_id].append(idx)
+
+        for key in trie_tree.keys():
+            print(str(key) + ": " + str(trie_tree[key]))
+
+        print(word2docs)
         end = time.time()
         self.logger.info("create_inverse_index. elapsed time: " + str(end - start) + " secs")
 
@@ -76,7 +115,7 @@ class Indexer:
                 return lambda doc: (preprocessor(doc.get_text()))
 
         self.tf_idf_vectorizer = StemmedTfidfVectorizer(strip_accents='ascii', stop_words='english', analyzer='word', ngram_range=(1, 1))
-        self.tf_idf = self.tf_idf_vectorizer.fit_transform(self.docs)
+        self.tf_idf = self.tf_idf_vectorizer.fit_transform(self.document_store.docs)
         end = time.time()
         self.logger.info("create_tf_idf complete. elapsed time: " + str(end - start) + " secs")
         # print(tfidf.vocabulary_)
@@ -85,14 +124,14 @@ class Indexer:
     def execute_query(self, query):
         start = time.time()
         self.logger.info("Executing query: " + str(query))
+        self.logger.debug("query tokenizing: " + str(process_and_tokenize_string(query)))
         question_document = Document()
         question_document.paragraphs.append(Paragraph(0, query))
         question_tf_idf_vector = self.tf_idf_vectorizer.transform([question_document])
 
         self.logger.info("question_tf_idf_vector: " + str(question_tf_idf_vector.data))
         cosine_similarities = linear_kernel(question_tf_idf_vector, self.tf_idf).flatten()
-        self.logger.info("cosine_similarities: " + str(cosine_similarities))
-        related_docs_indices = cosine_similarities.argsort()[:-5:-1]
+        related_docs_indices = cosine_similarities.argsort()[:-10:-1]
         self.logger.info("related_docs_indices: " + str(related_docs_indices))
 
         end = time.time()

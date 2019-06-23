@@ -12,13 +12,13 @@ def main():
 def run():
     ds = DocumentManager()
     ds.create("data\\document_passages.json")
-    ds.save()
-    #ds.load()
+    # ds.save()
+    # ds.load()
 
     indexer = Indexer()
-    indexer.index(ds.docs)
+    indexer.index(ds)
 
-    top_docs = indexer.execute_query("How did Romania gain independence after the Crimean War?")
+    top_docs = indexer.execute_query("try to work smarter not harder working hard")
 
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")

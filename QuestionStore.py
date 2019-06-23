@@ -1,9 +1,11 @@
 import csv
+from utils import process_and_tokenize_string
 
 
 class Question:
     qid = None
     question = None
+    question_tokenized = None
     document_id = None
     document_name = None
     relevant_passages = []
@@ -11,6 +13,7 @@ class Question:
     def __init__(self, qid, question, document_id=None, document_name=None, relevant_passages=None):
         self.qid = qid
         self.question = question
+        self.question_tokenized = process_and_tokenize_string(question) if (question is None) else None
         self.document_id = document_id
         self.document_name = document_name
         self.relevant_passages = relevant_passages

@@ -4,10 +4,12 @@ from utils import process_and_tokenize_string
 import time
 import pickle
 
+
 class Paragraph:
     paragraph_id = None
     data = None
     tokens = None
+    file_name = 'data/document_store_v1'
 
     def __init__(self, paragraph_id, data):
         self.paragraph_id = paragraph_id
@@ -20,7 +22,7 @@ class Paragraph:
 
 class Document:
     paragraphs = []
-    doc_id = []
+    doc_id = None
 
     def __init__(self, doc_id=None, paragraphs_json=None):
         if doc_id is None:
@@ -47,20 +49,30 @@ class Document:
 class DocumentManager:
     logger = logging.getLogger('DocumentManager')
     docs = None
+    token_set = None
 
     def __init__(self):
         pass
 
     def create(self, file_path):
+        # time and log
         start = time.time()
         self.logger.info("Creating documents...")
+
+        # load file from directory
         with open(file_path) as f:
             docs_json = json.load(f)
 
+        # init variables
         self.docs = [None] * len(docs_json)
+        self.token_set = set()
 
+        # load documents and tokenize
         for key in docs_json.keys():
-            self.docs[int(key)] = Document(int(key), docs_json[key])
+            doc = Document(int(key), docs_json[key])
+            self.docs[int(key)] = doc
+            # bag of words
+            self.token_set.update(doc.get_tokens())
 
         end = time.time()
         self.logger.info("Creating document complete. elapsed time: " + str(end - start) + " secs")
@@ -69,13 +81,15 @@ class DocumentManager:
         return self.docs[doc_id]
 
     def save(self):
-        f = open('data/document_store_v1', 'wb')
+        f = open(self.file_name, 'wb')
         pickle.dump(self.docs, f)
         f.close()
-        self.logger.info("Successfully saved document store data to data/document_store_v1")
+
+        self.logger.info("Successfully saved document store data to " + self.file_name)
 
     def load(self):
-        f = open('data/document_store_v1', 'rb')
+        f = open(self.file_name, 'rb')
         self.docs = pickle.load(f)
         f.close()
-        self.logger.info("Successfully loaded document store data from data/document_store_v1")
+
+        self.logger.info("Successfully loaded document store data from " + self.file_name)
