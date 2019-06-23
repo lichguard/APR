@@ -2,6 +2,7 @@ import json
 import logging
 from utils import process_and_tokenize_string
 import time
+import pickle
 
 class Paragraph:
     paragraph_id = None
@@ -18,8 +19,8 @@ class Paragraph:
 
 
 class Document:
-    paragraphs = None
-    doc_id = None
+    paragraphs = []
+    doc_id = []
 
     def __init__(self, doc_id=None, paragraphs_json=None):
         if doc_id is None:
@@ -66,3 +67,15 @@ class DocumentManager:
 
     def get_document_by_id(self, doc_id):
         return self.docs[doc_id]
+
+    def save(self):
+        f = open('data/document_store_v1', 'wb')
+        pickle.dump(self.docs, f)
+        f.close()
+        self.logger.info("Successfully saved document store data to data/document_store_v1")
+
+    def load(self):
+        f = open('data/document_store_v1', 'rb')
+        self.docs = pickle.load(f)
+        f.close()
+        self.logger.info("Successfully loaded document store data from data/document_store_v1")

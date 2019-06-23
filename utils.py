@@ -1,16 +1,10 @@
 from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
+from nltk.stem.porter import *
 from nltk.tokenize import word_tokenize
-
-from DocumentStore import *
-
-from sklearn.feature_extraction.text import TfidfVectorizer
 import Stemmer
-from collections import defaultdict
 
 english_stemmer = Stemmer.Stemmer('en')
 ps = PorterStemmer()
-
 
 def process(s):
     """
@@ -37,6 +31,7 @@ def process(s):
 
 
 def process_and_tokenize_string(data):
+    #return data.split(" ")
     return english_stemmer.stemWords(word_tokenize(data.lower()))
 
 

@@ -1,18 +1,14 @@
 from DocumentStore import *
 from sklearn.feature_extraction.text import TfidfVectorizer
-import Stemmer
 from collections import defaultdict
 import logging
 import time
 import operator
+from sklearn.metrics.pairwise import linear_kernel
 
 
 class TopDocs:
     scores = {}
-    document_store = None
-
-    def __init__(self, ds):
-        self.document_store = ds
 
     def update(self, doc_id, score):
         if doc_id not in self.scores.keys():
@@ -32,12 +28,11 @@ class TopDocs:
 
 
 class Indexer:
-    # create logger with 'Indexer'
     logger = logging.getLogger('Indexer')
 
     inv_index = None
     docs = None
-    english_stemmer = Stemmer.Stemmer('en')
+    tf_idf_vectorizer = None
     tf_idf = None
 
     def index(self, docs):
@@ -80,8 +75,8 @@ class Indexer:
                 preprocessor = super(TfidfVectorizer, self).build_preprocessor()
                 return lambda doc: (preprocessor(doc.get_text()))
 
-        self.tf_idf = StemmedTfidfVectorizer(strip_accents='ascii', stop_words='english', analyzer='word', ngram_range=(1, 1))
-        self.tf_idf.fit_transform(self.docs)
+        self.tf_idf_vectorizer = StemmedTfidfVectorizer(strip_accents='ascii', stop_words='english', analyzer='word', ngram_range=(1, 1))
+        self.tf_idf = self.tf_idf_vectorizer.fit_transform(self.docs)
         end = time.time()
         self.logger.info("create_tf_idf complete. elapsed time: " + str(end - start) + " secs")
         # print(tfidf.vocabulary_)
@@ -90,18 +85,15 @@ class Indexer:
     def execute_query(self, query):
         start = time.time()
         self.logger.info("Executing query: " + str(query))
-        top_docs = TopDocs(self.docs)
+        question_document = Document()
+        question_document.paragraphs.append(Paragraph(0, query))
+        question_tf_idf_vector = self.tf_idf_vectorizer.transform([question_document])
 
-        tokenize_query = process_and_tokenize_string(query)
-        for token in tokenize_query:
-            if token not in self.inv_index.keys():
-                continue
-
-            for doc_id in self.inv_index[token]:
-                top_docs.update(doc_id, self.tf_idf.idf_[self.tf_idf.vocabulary_[token]])
+        self.logger.info("question_tf_idf_vector: " + str(question_tf_idf_vector.data))
+        cosine_similarities = linear_kernel(question_tf_idf_vector, self.tf_idf).flatten()
+        self.logger.info("cosine_similarities: " + str(cosine_similarities))
+        related_docs_indices = cosine_similarities.argsort()[:-5:-1]
+        self.logger.info("related_docs_indices: " + str(related_docs_indices))
 
         end = time.time()
         self.logger.info("execute_query complete. elapsed time: " + str(end - start) + " secs")
-        self.logger.info(str(top_docs))
-
-        return top_docs
