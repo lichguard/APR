@@ -141,6 +141,9 @@ class TfIdf:
         # print(tf_idf_vectorizer.idf_))
 
     def query(self, query_doc, source_docs):
+        if not source_docs:
+            return None
+
         start = time.time()
         self.logger.info("Executing tf_idf query")
 

@@ -70,7 +70,6 @@ class DocumentManager:
 
         # load documents and tokenize
         for key in docs_json.keys():
-            progbar
             doc = Document(int(key), docs_json[key])
             self.docs[int(key)] = doc
             # bag of words
