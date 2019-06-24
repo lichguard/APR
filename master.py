@@ -3,28 +3,36 @@ from indexer import Indexer
 import logging
 
 
+DOC_SOURCE_FILE = "data\\document_passages"
+query_string = "youtube"
+reindex = False
+
+
 def main():
     logging.basicConfig(level=logging.NOTSET)
     run()
 
 
-DOC_SOURCE_FILE = "data\\document_passages"
-
-
 def run():
-
     ds = DocumentManager(DOC_SOURCE_FILE)
-    #ds.create()
-    #ds.save()
-    ds.load()
+    if reindex:
+        ds.create()
+        ds.save()
+    else:
+        ds.load()
 
     indexer = Indexer(ds)
-    #indexer.index()
-    #indexer.save()
-    indexer.load()
+    if reindex:
+        indexer.index()
+        indexer.save()
+    else:
+        indexer.load()
 
-    top_docs = indexer.execute_query("What is a municipality?")
-
+    top_docs = indexer.execute_query(query_string)
+    print(top_docs)
+    if top_docs:
+        print("Doc id: " + str(top_docs[0].doc.doc_id))
+        print(top_docs[0].doc.get_text())
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")
     # doc = ds.get_document_by_id(1)

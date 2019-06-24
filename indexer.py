@@ -9,7 +9,7 @@ from utils import process_and_tokenize_string, progbar
 import marisa_trie
 from enum import Enum
 import cProfile
-
+# import gensim
 
 class ScoreType(Enum):
     tf_idf = 0
@@ -195,20 +195,24 @@ class Indexer:
         self.tf_idf = None
 
     def index(self):
-        start = time.time()
-        self.logger.info("Indexing...")
-
         self.posting_list = PostingList(self.document_store)
         self.tf_idf = TfIdf(self.document_store)
 
-        end = time.time()
-        self.logger.info("Indexing complete. elapsed time: " + str(end - start) + " secs")
-
     def execute_query(self, query):
         start = time.time()
-        self.logger.info("Executing query: " + str(query))
-        self.logger.debug("query tokenizing: " + str(process_and_tokenize_string(query)))
+        self.logger.info(" Executing Query: '" + str(query) + "'")
+        self.logger.debug(" Query tokens: " + str(process_and_tokenize_string(query)))
 
+        """
+                processed = [doc.get_tokens() for doc in self.document_store.docs]
+                dictionary = gensim.corpora.Dictionary(processed)
+                corpus = [dictionary.doc2bow(text) for text in processed]
+                lda = gensim.models.LdaMulticore(corpus, id2word=dictionary, num_topics=len(self.document_store.docs), passes=10, workers=4)
+                topics = lda.show_topics(num_topics=len(self.document_store.docs))
+
+                for topic in topics:
+                    print(topic)
+        """
         # create question doc from query string
         question_document = Document()
         question_document.paragraphs.append(Paragraph(0, query))
@@ -218,7 +222,7 @@ class Indexer:
         relevant_docs = [self.document_store.docs[i] for i in relevant_doc_ids]
         top_docs = [TopDoc(self.document_store.docs[i]) for i in relevant_doc_ids]
 
-        self.logger.info("filtered to " + str(len(top_docs)) + " out of " + str(len(self.document_store.docs)))
+        self.logger.debug("filtered to " + str(len(top_docs)) + " out of " + str(len(self.document_store.docs)))
         tf_idf_scores = self.tf_idf.query(question_document, relevant_docs)
 
         for i in range(len(top_docs)):
@@ -237,10 +241,10 @@ class Indexer:
             top_docs[i].calculate_score()
 
         top_docs.sort(key=lambda x: x.score, reverse=True)
-        self.logger.info(str(top_docs))
 
         end = time.time()
         self.logger.info("execute_query complete. elapsed time: " + str(end - start) + " secs")
+        return top_docs
 
     def load(self):
         full_file_name = self.document_store.file_name + "_indexer.arp"
