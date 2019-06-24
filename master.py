@@ -16,14 +16,12 @@ def run():
     ds = DocumentManager(DOC_SOURCE_FILE)
     ds.create()
     ds.save()
-    #ds.load()
+    # ds.load()
 
     indexer = Indexer(ds)
     indexer.index()
-    #indexer.save()
-    #indexer.load()
 
-    top_docs = indexer.execute_query("the highest mountain arg")
+    top_docs = indexer.execute_query("How did the idea of syncretism originate?")
 
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")

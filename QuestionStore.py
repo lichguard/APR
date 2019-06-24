@@ -3,12 +3,6 @@ from utils import process_and_tokenize_string
 
 
 class Question:
-    qid = None
-    question = None
-    question_tokenized = None
-    document_id = None
-    document_name = None
-    relevant_passages = []
 
     def __init__(self, qid, question, document_id=None, document_name=None, relevant_passages=None):
         self.qid = qid

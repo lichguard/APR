@@ -5,27 +5,45 @@ import logging
 import time
 import operator
 from sklearn.metrics.pairwise import linear_kernel
-from utils import process_and_tokenize_string
+from utils import process_and_tokenize_string, progbar
 import marisa_trie
-from operator import itemgetter
-import numpy as np
+from enum import Enum
+import cProfile
 
 
-class TopDocs:
-    scores = {}
+class ScoreType(Enum):
+    tf_idf = 0
+    token_count = 1
+    proximity_score = 2
 
-    def update(self, doc_id, score):
-        if doc_id not in self.scores.keys():
-            self.scores[doc_id] = score
-        else:
-            self.scores[doc_id] += score
+
+class TopDoc:
+
+    def __init__(self, doc):
+        self.doc = doc
+        self.scores = defaultdict(int)
+        self.score = 0
+
+    def get_doc_id(self):
+        return self.doc.doc_id
+
+    def update_score(self, score_type, score):
+        self.scores[score_type] = score
+
+    def calculate_score(self):
+        self.score = 0
+        self.score += self.scores[ScoreType.tf_idf] * 0.6
+        self.score += self.scores[ScoreType.token_count] * 0.1
+        self.score += self.scores[ScoreType.proximity_score] * 0.3
 
     def __str__(self):
-        output = "\n"
+        output = "id " + str(self.doc.doc_id) + ", score " + str(self.score)
         for key in self.scores.keys():
-            output += "doc_id: " + str(key) + " score: " + str(self.scores[key])
-            # self.document_store.docs[key].get_text() + " \n"
+            output += "\t" + str(key) + " score: " + str(self.scores[key])
         return output
+
+    def __repr__(self):
+        return "\n" + str(self)
 
     def display(self):
         return sorted(self.scores.items(), key=operator.itemgetter(1), reverse=True)
@@ -33,10 +51,11 @@ class TopDocs:
 
 class PostingList:
     logger = logging.getLogger('PostingList')
-    token2docs = None
-    token_trie_tree = None
 
     def __init__(self, document_store):
+
+        # pr = cProfile.Profile()
+        # pr.enable()
         start = time.time()
         self.logger.info("Creating posting list (inverse index)...")
 
@@ -50,19 +69,57 @@ class PostingList:
 
         end = time.time()
         self.logger.info("create_inverse_index. elapsed time: " + str(end - start) + " secs")
+        # pr.disable()
+        # after your program ends
+         # pr.print_stats(sort="calls")
 
     # returns a set of unique ids e.g. (1,5,2,5)
-    def get_relevant_docs_ids(self, question_doc):
+    def get_relevant_docs_ids(self, query_doc):
         relevant_docs = set()
-        for token in question_doc.get_tokens():
-            if token in self.token_trie_tree.keys():
+        for token in query_doc.get_tokens():
+            if token in self.token_trie_tree:
                 relevant_docs.update(self.token2docs[self.token_trie_tree[token]].keys())
         return relevant_docs
+
+    def get_tokens_intersection_count(self, query_tokens, source_doc):
+        count = 0
+        for token in query_tokens:
+            if token in self.token_trie_tree:
+                if source_doc.doc_id in self.token2docs[self.token_trie_tree[token]].keys():
+                    count += 1
+
+        return count
+
+    def get_proximity_score(self, query_tokens, source_doc):
+        positions = []
+        query_tokens = set(query_tokens)
+        # find all relevant positions
+        for token in query_tokens:
+            if token in self.token_trie_tree:
+                if source_doc.doc_id in self.token2docs[self.token_trie_tree[token]].keys():
+                    positions += self.token2docs[self.token_trie_tree[token]][source_doc.doc_id]
+
+        doc_tokens = source_doc.get_tokens()
+        max_count = 0
+        window = 10
+        for position in positions:
+            count = 0
+            used_tokens = set()
+            for position_index in range(position-window, position+window, 1):
+                if position_index < 0 or position_index >= len(doc_tokens):
+                    continue
+                else:
+                    token = doc_tokens[position_index]
+                    if token in query_tokens and token not in used_tokens:
+                        count += 1
+                        used_tokens.add(token)
+            if count > max_count:
+                max_count = count
+        return max_count
 
 
 class TfIdf:
     logger = logging.getLogger('TfIdf')
-    tf_idf_vectorizer = None
 
     def __init__(self, document_store):
         start = time.time()
@@ -121,12 +178,10 @@ class Indexer:
       """
     logger = logging.getLogger('Indexer')
 
-    posting_list = None
-    document_store = None
-    tf_idf = None
-
     def __init__(self, document_store):
         self.document_store = document_store
+        self.posting_list = None
+        self.tf_idf = None
 
     def index(self):
         start = time.time()
@@ -146,12 +201,27 @@ class Indexer:
         # create question doc from query string
         question_document = Document()
         question_document.paragraphs.append(Paragraph(0, query))
+        question_document.recalculate_tokens()
 
         relevant_doc_ids = self.posting_list.get_relevant_docs_ids(question_document)
-        tf_idf_scores = self.tf_idf.query(question_document, self.document_store.docs)
+        relevant_docs = [self.document_store.docs[i] for i in relevant_doc_ids]
+        top_docs = [TopDoc(self.document_store.docs[i]) for i in relevant_doc_ids]
 
-        self.logger.info(relevant_doc_ids)
-        self.logger.info(tf_idf_scores.argsort()[::-1])
+        tf_idf_scores = self.tf_idf.query(question_document, relevant_docs)
+
+        for i in range(len(top_docs)):
+            progbar(i, len(top_docs), 20)
+
+            top_docs[i].update_score(ScoreType.tf_idf, tf_idf_scores[i])
+
+            top_docs[i].update_score(ScoreType.token_count, self.posting_list.get_tokens_intersection_count(question_document.get_tokens(), top_docs[i].doc) / len(question_document.get_tokens()))
+
+            top_docs[i].update_score(ScoreType.proximity_score, self.posting_list.get_proximity_score(question_document.get_tokens(), top_docs[i].doc) / len(question_document.get_tokens()))
+
+            top_docs[i].calculate_score()
+
+        top_docs.sort(key=lambda x: x.score, reverse=True)
+        self.logger.info(str(top_docs))
 
         end = time.time()
         self.logger.info("execute_query complete. elapsed time: " + str(end - start) + " secs")
