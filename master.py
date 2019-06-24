@@ -14,14 +14,16 @@ DOC_SOURCE_FILE = "data\\document_passages"
 def run():
 
     ds = DocumentManager(DOC_SOURCE_FILE)
-    ds.create()
-    ds.save()
-    # ds.load()
+    #ds.create()
+    #ds.save()
+    ds.load()
 
     indexer = Indexer(ds)
-    indexer.index()
+    #indexer.index()
+    #indexer.save()
+    indexer.load()
 
-    top_docs = indexer.execute_query("How did the idea of syncretism originate?")
+    top_docs = indexer.execute_query("What is a municipality?")
 
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")

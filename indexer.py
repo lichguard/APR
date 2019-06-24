@@ -21,7 +21,7 @@ class TopDoc:
 
     def __init__(self, doc):
         self.doc = doc
-        self.scores = defaultdict(int)
+        self.scores = defaultdict(float)
         self.score = 0
 
     def get_doc_id(self):
@@ -88,9 +88,9 @@ class PostingList:
                 if source_doc.doc_id in self.token2docs[self.token_trie_tree[token]].keys():
                     count += 1
 
-        return count
+        return count / len(query_tokens)
 
-    def get_proximity_score(self, query_tokens, source_doc):
+    def get_proximity_score(self, query_tokens, source_doc, window_size=10):
         positions = []
         query_tokens = set(query_tokens)
         # find all relevant positions
@@ -101,11 +101,10 @@ class PostingList:
 
         doc_tokens = source_doc.get_tokens()
         max_count = 0
-        window = 10
         for position in positions:
             count = 0
             used_tokens = set()
-            for position_index in range(position-window, position+window, 1):
+            for position_index in range(position-window_size, position+window_size, 1):
                 if position_index < 0 or position_index >= len(doc_tokens):
                     continue
                 else:
@@ -115,7 +114,11 @@ class PostingList:
                         used_tokens.add(token)
             if count > max_count:
                 max_count = count
-        return max_count
+        return max_count / len(query_tokens)
+
+
+def dummy_fun(doc):
+    return doc
 
 
 class TfIdf:
@@ -123,6 +126,7 @@ class TfIdf:
 
     def __init__(self, document_store):
         start = time.time()
+        """
         class StemmedTfidfVectorizer(TfidfVectorizer):
             def build_analyzer(self):
                 # analyzer = super(TfidfVectorizer, self).build_analyzer()
@@ -135,6 +139,10 @@ class TfIdf:
 
         self.tf_idf_vectorizer = StemmedTfidfVectorizer(strip_accents='ascii', stop_words='english', analyzer='word', ngram_range=(1, 1))
         self.tf_idf_vectorizer.fit(document_store.docs)
+        """
+        self.tf_idf_vectorizer = TfidfVectorizer(analyzer='word',tokenizer=dummy_fun,preprocessor=dummy_fun, token_pattern=None)
+        self.tf_idf_vectorizer.fit([doc.get_tokens() for doc in document_store.docs])
+
         end = time.time()
         self.logger.info("create_tf_idf complete. elapsed time: " + str(end - start) + " secs")
         # print(tf_idf_vectorizer.vocabulary_)
@@ -147,8 +155,8 @@ class TfIdf:
         start = time.time()
         self.logger.info("Executing tf_idf query")
 
-        docs_vecotr = self.tf_idf_vectorizer.transform(source_docs)
-        query_vector = self.tf_idf_vectorizer.transform([query_doc])
+        docs_vecotr = self.tf_idf_vectorizer.transform([doc.get_tokens() for doc in source_docs])
+        query_vector = self.tf_idf_vectorizer.transform([query_doc.get_tokens()])
 
         cosine_similarities = linear_kernel(query_vector, docs_vecotr).flatten()
 
@@ -210,6 +218,7 @@ class Indexer:
         relevant_docs = [self.document_store.docs[i] for i in relevant_doc_ids]
         top_docs = [TopDoc(self.document_store.docs[i]) for i in relevant_doc_ids]
 
+        self.logger.info("filtered to " + str(len(top_docs)) + " out of " + str(len(self.document_store.docs)))
         tf_idf_scores = self.tf_idf.query(question_document, relevant_docs)
 
         for i in range(len(top_docs)):
@@ -217,9 +226,13 @@ class Indexer:
 
             top_docs[i].update_score(ScoreType.tf_idf, tf_idf_scores[i])
 
-            top_docs[i].update_score(ScoreType.token_count, self.posting_list.get_tokens_intersection_count(question_document.get_tokens(), top_docs[i].doc) / len(question_document.get_tokens()))
-
-            top_docs[i].update_score(ScoreType.proximity_score, self.posting_list.get_proximity_score(question_document.get_tokens(), top_docs[i].doc) / len(question_document.get_tokens()))
+            top_docs[i].update_score(ScoreType.proximity_score,
+                self.posting_list.get_proximity_score(
+                    question_document.get_tokens(), top_docs[i].doc, 10) * 0.7
+                                    +
+                self.posting_list.get_proximity_score(
+                    question_document.get_tokens(), top_docs[i].doc, 30) * 0.3
+             )
 
             top_docs[i].calculate_score()
 
@@ -228,3 +241,19 @@ class Indexer:
 
         end = time.time()
         self.logger.info("execute_query complete. elapsed time: " + str(end - start) + " secs")
+
+    def load(self):
+        full_file_name = self.document_store.file_name + "_indexer.arp"
+        f = open(full_file_name, 'rb')
+        tmp_dict = pickle.load(f)
+        f.close()
+        self.__dict__.clear()
+        self.__dict__.update(tmp_dict)
+        self.logger.info("Successfully loaded indexer data to " + full_file_name)
+
+    def save(self):
+        full_file_name = self.document_store.file_name + "_indexer.arp"
+        f = open(full_file_name, 'wb')
+        pickle.dump(self.__dict__, f, 2)
+        f.close()
+        self.logger.info("Successfully saved indexer data from " + full_file_name)
