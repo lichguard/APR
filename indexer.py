@@ -11,6 +11,7 @@ from enum import Enum
 import cProfile
 # import gensim
 
+
 class ScoreType(Enum):
     tf_idf = 0
     token_count = 1
@@ -24,9 +25,6 @@ class TopDoc:
         self.scores = defaultdict(float)
         self.score = 0
 
-    def get_doc_id(self):
-        return self.doc.doc_id
-
     def update_score(self, score_type, score):
         self.scores[score_type] = score
 
@@ -37,7 +35,7 @@ class TopDoc:
         self.score += self.scores[ScoreType.proximity_score] * 0.3
 
     def __str__(self):
-        output = "id " + str(self.doc.doc_id) + ", score " + str(self.score)
+        output = "(doc " + str(self.doc.get_doc_id()) + ", passage " + str(self.doc.get_passage_id()) + ", score " + str(self.score) + ")"
         for key in self.scores.keys():
             output += "\t" + str(key) + " score: " + str(self.scores[key])
         return output
@@ -65,7 +63,7 @@ class PostingList:
         for doc in document_store.docs:
             for idx, token in enumerate(doc.get_tokens()):
                 trie_token_index = self.token_trie_tree[token]
-                self.token2docs[trie_token_index][doc.doc_id].append(idx)
+                self.token2docs[trie_token_index][doc.get_doc_index()].append(idx)
 
         end = time.time()
         self.logger.info("create_inverse_index. elapsed time: " + str(end - start) + " secs")
@@ -74,9 +72,9 @@ class PostingList:
          # pr.print_stats(sort="calls")
 
     # returns a set of unique ids e.g. (1,5,2,5)
-    def get_relevant_docs_ids(self, query_doc):
+    def get_relevant_docs_ids(self, query_tokens):
         relevant_docs = set()
-        for token in query_doc.get_tokens():
+        for token in query_tokens:
             if token in self.token_trie_tree:
                 relevant_docs.update(self.token2docs[self.token_trie_tree[token]].keys())
         return relevant_docs
@@ -85,7 +83,7 @@ class PostingList:
         count = 0
         for token in query_tokens:
             if token in self.token_trie_tree:
-                if source_doc.doc_id in self.token2docs[self.token_trie_tree[token]].keys():
+                if source_doc.get_doc_index() in self.token2docs[self.token_trie_tree[token]].keys():
                     count += 1
 
         return count / len(query_tokens)
@@ -96,8 +94,8 @@ class PostingList:
         # find all relevant positions
         for token in query_tokens:
             if token in self.token_trie_tree:
-                if source_doc.doc_id in self.token2docs[self.token_trie_tree[token]].keys():
-                    positions += self.token2docs[self.token_trie_tree[token]][source_doc.doc_id]
+                if source_doc.get_doc_index() in self.token2docs[self.token_trie_tree[token]].keys():
+                    positions += self.token2docs[self.token_trie_tree[token]][source_doc.get_doc_index()]
 
         doc_tokens = source_doc.get_tokens()
         max_count = 0
@@ -148,7 +146,7 @@ class TfIdf:
         # print(tf_idf_vectorizer.vocabulary_)
         # print(tf_idf_vectorizer.idf_))
 
-    def query(self, query_doc, source_docs):
+    def query(self, query_tokens, source_docs):
         if not source_docs:
             return None
 
@@ -156,7 +154,7 @@ class TfIdf:
         self.logger.info("Executing tf_idf query")
 
         docs_vecotr = self.tf_idf_vectorizer.transform([doc.get_tokens() for doc in source_docs])
-        query_vector = self.tf_idf_vectorizer.transform([query_doc.get_tokens()])
+        query_vector = self.tf_idf_vectorizer.transform([query_tokens])
 
         cosine_similarities = linear_kernel(query_vector, docs_vecotr).flatten()
 
@@ -214,16 +212,14 @@ class Indexer:
                     print(topic)
         """
         # create question doc from query string
-        question_document = Document()
-        question_document.paragraphs.append(Paragraph(0, query))
-        question_document.recalculate_tokens()
+        query_tokens = process_and_tokenize_string(query)
 
-        relevant_doc_ids = self.posting_list.get_relevant_docs_ids(question_document)
+        relevant_doc_ids = self.posting_list.get_relevant_docs_ids(query_tokens)
         relevant_docs = [self.document_store.docs[i] for i in relevant_doc_ids]
         top_docs = [TopDoc(self.document_store.docs[i]) for i in relevant_doc_ids]
 
         self.logger.debug("filtered to " + str(len(top_docs)) + " out of " + str(len(self.document_store.docs)))
-        tf_idf_scores = self.tf_idf.query(question_document, relevant_docs)
+        tf_idf_scores = self.tf_idf.query(query_tokens, relevant_docs)
 
         for i in range(len(top_docs)):
             progbar(i, len(top_docs), 20)
@@ -232,10 +228,10 @@ class Indexer:
 
             top_docs[i].update_score(ScoreType.proximity_score,
                 self.posting_list.get_proximity_score(
-                    question_document.get_tokens(), top_docs[i].doc, 10) * 0.7
+                    query_tokens, top_docs[i].doc, 10) * 0.7
                                     +
                 self.posting_list.get_proximity_score(
-                    question_document.get_tokens(), top_docs[i].doc, 30) * 0.3
+                    query_tokens, top_docs[i].doc, 30) * 0.3
              )
 
             top_docs[i].calculate_score()

@@ -4,8 +4,8 @@ import logging
 
 
 DOC_SOURCE_FILE = "data\\document_passages"
-query_string = "youtube"
-reindex = False
+query_string = "How quickly did information technology advance following the invention of the transistor?"
+reindex = True
 
 
 def main():
@@ -29,7 +29,7 @@ def run():
         indexer.load()
 
     top_docs = indexer.execute_query(query_string)
-    print(top_docs)
+    print(top_docs[0:10])
     if top_docs:
         print("Doc id: " + str(top_docs[0].doc.doc_id))
         print(top_docs[0].doc.get_text())
