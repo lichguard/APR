@@ -1,11 +1,6 @@
-from DocumentStore import DocumentManager
 from indexer import Indexer
 import logging
-
-
-DOC_SOURCE_FILE = "data\\document_passages"
-query_string = "How quickly did information technology advance following the invention of the transistor?"
-reindex = True
+import json
 
 
 def main():
@@ -14,25 +9,32 @@ def main():
 
 
 def run():
-    ds = DocumentManager(DOC_SOURCE_FILE)
-    if reindex:
-        ds.create()
-        ds.save()
-    else:
-        ds.load()
+    #DOC_SOURCE_FILE = "document_passages_shorten_2"
+    #DOC_SOURCE_FILE = "document_passages_shorten"
+    DOC_SOURCE_FILE = "document_passages"
+    query_string = "Who runs the administration of the euro?"
+    reindex = True
 
-    indexer = Indexer(ds)
-    if reindex:
-        indexer.index()
-        indexer.save()
-    else:
-        indexer.load()
+    # load file from directory
+    with open("data\\" + DOC_SOURCE_FILE + ".json") as f:
+        docs_json = json.load(f)
 
+    indexer = Indexer("data\\cache\\" + DOC_SOURCE_FILE + "_documents")
+    indexer.index({x: ' '.join(docs_json[x].values()) for x in docs_json}, reindex)
     top_docs = indexer.execute_query(query_string)
+
+    print("Documents: ")
     print(top_docs[0:10])
+
     if top_docs:
-        print("Doc id: " + str(top_docs[0].doc.doc_id))
-        print(top_docs[0].doc.get_text())
+        passages = docs_json[str(top_docs[0].get_doc().get_id())]
+        indexer = Indexer("data\\cache\\" + DOC_SOURCE_FILE + "_doc_" + str(top_docs[0].get_doc().get_id()) + "_passages")
+        indexer.index(passages, reindex)
+        top_docs = indexer.execute_query(query_string)
+
+        print("Passages: ")
+        print(passages)
+        print(top_docs)
     # qs = QuestionManager()
     # qs.create("data\\dev.tsv")
     # doc = ds.get_document_by_id(1)
