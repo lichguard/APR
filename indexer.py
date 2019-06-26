@@ -12,6 +12,7 @@ from tfidf import TfIdf
 # import cProfile
 
 
+
 class Indexer:
     """
       A class used to index DocumentStore
@@ -136,3 +137,4 @@ class Indexer:
         pickle.dump(self.__dict__, f, 2)
         f.close()
         self.logger.info("Successfully saved indexer data from " + full_file_name)
+
