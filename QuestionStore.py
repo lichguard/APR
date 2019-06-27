@@ -4,16 +4,16 @@ from utils import process_and_tokenize_string
 
 class Question:
 
-    def __init__(self, qid, question, document_id=None, document_name=None, relevant_passages=None):
+    def __init__(self, qid, question, document_id=None, document_name=None, passages=None):
         self.qid = qid
         self.question = question
         self.document_id = int(document_id)
         self.document_name = document_name
-        self.relevant_passages = relevant_passages
+        self.passages = passages
 
     def __str__(self):
         return str(self.qid) + "\t" + str(self.question) + "\t" + str(self.document_id) + "\t" + str(self.document_name) + "\t" + \
-               str(self.relevant_passages) + "\n"
+               str(self.passages) + "\n"
 
     def __repr__(self):
         return self.__str__()

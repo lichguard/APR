@@ -1,6 +1,6 @@
 from collections import defaultdict
 import operator
-from scoretype import ScoreType
+from documents.scoretype import ScoreType
 
 
 class TopDoc:
@@ -19,7 +19,6 @@ class TopDoc:
     def calculate_score(self):
         self.score = 0
         self.score += self.scores[ScoreType.tf_idf] * 0.6
-        self.score += self.scores[ScoreType.jaccard] * 0.2
         self.score += self.scores[ScoreType.proximity] * 0.2
 
     def __str__(self):

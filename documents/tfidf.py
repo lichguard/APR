@@ -2,10 +2,7 @@ import logging
 import time
 from sklearn.metrics.pairwise import linear_kernel
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-
-def dummy_fun(doc):
-    return doc
+from utils import dummy_func
 
 
 class TfIdf:
@@ -27,7 +24,7 @@ class TfIdf:
         self.tf_idf_vectorizer = StemmedTfidfVectorizer(strip_accents='ascii', stop_words='english', analyzer='word', ngram_range=(1, 1))
         self.tf_idf_vectorizer.fit(document_store.docs)
         """
-        self.tf_idf_vectorizer = TfidfVectorizer(analyzer='word', tokenizer=dummy_fun,preprocessor=dummy_fun, token_pattern=None)
+        self.tf_idf_vectorizer = TfidfVectorizer(analyzer='word', tokenizer=dummy_func ,preprocessor=dummy_func, token_pattern=None)
         self.tf_idf_vectorizer.fit(tokens_by_docs)
 
         end = time.time()
