@@ -5,44 +5,35 @@ import json
 from QuestionStore import QuestionManager
 from utils import process_and_tokenize_string
 
+
 def main():
     logging.basicConfig(level=logging.NOTSET)
     run()
-
-
-def create_document_indexer(doc_source_file, reindex):
-    # load file from directory
-    with open("data\\" + doc_source_file + ".json") as f:
-        docs_json = json.load(f)
-
-    indexer = Documents_Indexer(doc_source_file + "_documents")
-    #indexer.index({x: ' '.join(docs_json[x].values()) for x in docs_json}, reindex)
-    return docs_json, indexer
-
-
-def create_passages_indexer(doc_id, docs_json, doc_source_file, reindex):
-    doc_id = str(doc_id)
-    passages = docs_json[doc_id]
-    indexer = Passages_Indexer(doc_source_file + "_doc_" + doc_id + "_passages")
-    indexer.index(passages, reindex)
-    return indexer
 
 
 def run():
     #doc_source_file = "document_passages_shorten_2"
     #doc_source_file = "document_passages_shorten"
     doc_source_file = "document_passages"
-    query_string = "What is the rationale of support of the Common Era?"
-    reindex = False
+    query_string = "how vastly dense and diverse is the city of sao paulo?"
+    reindex = True
 
-    docs_json, docs_indexer = create_document_indexer(doc_source_file, reindex)
+    # load file from directory
+    with open("data\\" + doc_source_file + ".json") as f:
+        docs_json = json.load(f)
 
-    #top_docs = docs_indexer.execute_query(query_string)
-    #print("Documents: ")
-    #print(top_docs[0:10])
+    docs_indexer = Documents_Indexer(doc_source_file + "_documents")
+    docs_indexer.index({x: ' '.join(docs_json[x].values()) for x in docs_json}, reindex)
 
-    doc_id = 204  # str(top_docs[0].get_doc().get_id())
-    passage_indexer = create_passages_indexer(doc_id, docs_json,doc_source_file, reindex)
+    top_docs = docs_indexer.execute_query(query_string)
+    print("Documents: ")
+    print(top_docs[0:10])
+
+    doc_id = top_docs[0].doc.get_id()  # str(top_docs[0].get_doc().get_id())
+    doc_id = str(doc_id)
+    passages = docs_json[doc_id]
+    passage_indexer = Documents_Indexer(doc_source_file + "_doc_" + doc_id + "_passages")
+    passage_indexer.index(passages, reindex)
     top_passages = passage_indexer.execute_query(query_string)
     print("Passages: ")
     print(top_passages)

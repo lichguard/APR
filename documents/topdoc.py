@@ -18,8 +18,8 @@ class TopDoc:
 
     def calculate_score(self):
         self.score = 0
-        self.score += self.scores[ScoreType.tf_idf] * 0.6
-        self.score += self.scores[ScoreType.proximity] * 0.2
+        self.score += self.scores[ScoreType.tf_idf] * 0.7
+        self.score += self.scores[ScoreType.proximity] * 0.3
 
     def __str__(self):
         output = "(doc " + str(self.doc.get_id()) + ", score " + str(self.score) + ")"
