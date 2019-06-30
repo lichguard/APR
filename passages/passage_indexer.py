@@ -5,7 +5,7 @@ from gensim.corpora import Dictionary
 from pathlib import Path
 from passages.toppassage import TopPassage
 from passages.passage import Passage
-from utils import process_and_tokenize_string, progbar, dummy_func
+from utils import process_and_tokenize_string, progbar, dummy_func, wh_questions, split_strings
 from passages.scoretype import ScoreType
 # import cProfile
 from sklearn.feature_extraction.text import CountVectorizer
@@ -20,6 +20,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.metrics import pairwise_kernels
 from scipy.spatial.distance import cosine
+from passages.ngrams import Ngrams
+
 
 class TfidfEmbeddingVectorizer(object):
     def __init__(self, word2vec):
@@ -66,7 +68,7 @@ class MeanEmbeddingVectorizer(object):
         ])
 
 
-class Indexer:
+class PassageIndexer:
     """
       A class used to index DocumentStore
 
@@ -92,11 +94,12 @@ class Indexer:
 
     def __init__(self, file_name=None):
         self.posting_list = None
-        self.tf_idf = None
+        self.ngrams = None
         self.dictionary = None
         self.tokens_by_docs = None
         self.docs = None
         self.file_name = file_name
+
 
     def index(self, docs, reindex=True):
         if not reindex:
@@ -107,6 +110,7 @@ class Indexer:
 
             self.tokens_by_docs = [doc.get_tokens() for doc in self.docs]
             self.dictionary = Dictionary(self.tokens_by_docs)
+            self.ngrams = Ngrams(self.tokens_by_docs)
 
             if self.file_name:
                 self.save()
@@ -117,60 +121,38 @@ class Indexer:
         self.logger.info("Creating documents...")
 
         # init variables
-        self.docs = [None] * len(docs_json)
+        self.docs = []
 
         # load documents and tokenize
-        for i, key in enumerate(docs_json.keys()):
-            progbar(i, len(self.docs), 20)
-            doc = Passage(int(key),0, docs_json[key])
-            self.docs[int(key)] = doc
+        for doc_id in docs_json.keys():
+            passage_json = docs_json[doc_id]
+            for i, key in enumerate(passage_json.keys()):
+                doc = Passage(int(key), int(doc_id), passage_json[key])
+                self.docs.append(doc)
 
         end = time.time()
         self.logger.info("Creating document complete. elapsed time: " + str(end - start) + " secs")
 
     def execute_query(self, query):
         start = time.time()
-        self.logger.info(" Executing Query: '" + str(query) + "'")
-        self.logger.debug(" Query tokens: " + str(process_and_tokenize_string(query)))
-
-        clf = svm.SVC(gamma='scale')
-        # create question doc from query string
         query_tokens = process_and_tokenize_string(query)
+        unprocessed_query_tokens = split_strings(query)
+        self.logger.info(" Executing Query: '" + str(query) + "'  ---- tokens:" +   str(query_tokens) )
+
+        question_class = -1
+        for i, wh in enumerate(wh_questions):
+            if wh in unprocessed_query_tokens:
+                question_class = i
+                break
+
         top_docs = [TopPassage(doc) for doc in self.docs]
-
-        """
-        model = gensim.models.Word2Vec(self.tokens_by_docs, size=100)
-        w2v = dict(zip(model.wv.index2word, model.wv.syn0))
-
-        etree_w2v = Pipeline([
-            ("word2vec vectorizer", MeanEmbeddingVectorizer(w2v)),
-            ("extra trees", ExtraTreesClassifier(n_estimators=200))])
-        etree_w2v_tfidf = Pipeline([
-            ("word2vec vectorizer", TfidfEmbeddingVectorizer(w2v)),
-            ("extra trees", ExtraTreesClassifier(n_estimators=200))])
-        """
-
-        vectorizer = CountVectorizer(ngram_range=(1, 3),  tokenizer=dummy_func, preprocessor=dummy_func)
-        vectorizer.fit(self.tokens_by_docs)
-        query_vector = vectorizer.transform([query_tokens])
-
-        weights = {}
-        for key in vectorizer.get_feature_names():
-            weights[key] = len(key.split())
+        ngrams_vector = self.ngrams.query(query_tokens, self.docs)
 
         for i in range(len(top_docs)):
-            progbar(i, len(top_docs), 20)
-
-            doc_vector = vectorizer.transform([top_docs[i].passage.get_tokens()])
-
-            cosine_similarities = linear_kernel(query_vector, doc_vector).flatten()
-            #cosine_similarities = sum(sum(pairwise_kernels(query_vector,
-            #     doc_vector,
-            #     metric='cosine')))
-
-            top_docs[i].update_score(ScoreType.language_model, cosine_similarities)
+            progbar(i, len(top_docs))
+            top_docs[i].update_score(ScoreType.language_model, ngrams_vector[i])
             top_docs[i].calculate_score()
-
+        print(' ')
         top_docs.sort(key=lambda x: x.score, reverse=True)
 
         end = time.time()

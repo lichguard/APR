@@ -5,35 +5,14 @@ from gensim.corpora import Dictionary
 from pathlib import Path
 from documents.topdoc import TopDoc
 from documents.document import Document
-from utils import process_and_tokenize_string, progbar
+from utils import process_and_tokenize_string, progbar, generate_ngrams
 from documents.scoretype import ScoreType
 from documents.postinglist import PostingList
 from documents.tfidf import TfIdf
 # import cProfile
-
+from statistics import mean
 
 class Indexer:
-    """
-      A class used to index DocumentStore
-
-      Attributes
-      ----------
-      logger : Logger
-          a formatted string to print out what the animal says
-      posting_list : PostingList
-          a formatted string to print out what the animal says
-      document_store : Document
-          will be written
-      tf_idf_vectorizer : StemmedTfidfVectorizer
-          the sound that the animal makes
-      tf_idf : sparse matrix, [n_samples, n_features]]
-          the number of legs the animal has (default 4)
-
-      Methods
-      -------
-      index(DocumentStore)
-          Prints the animals name and what sound it makes
-      """
     logger = logging.getLogger('Indexer')
 
     def __init__(self, file_name=None):
@@ -83,13 +62,19 @@ class Indexer:
 
         # create question doc from query string
         query_tokens = process_and_tokenize_string(query)
+        #ngrams = generate_ngrams(query_tokens,3)
+        query_tokens_tfidf = self.tf_idf.get_tokens_value(query_tokens)
+        avg = mean(query_tokens_tfidf.values())
+        query_tokens_tfidf = {k: v for k, v in query_tokens_tfidf.items() if v >= avg}
 
-        relevant_doc_ids = self.posting_list.get_relevant_docs_ids(query_tokens)
+        relevant_doc_ids = self.posting_list.get_relevant_docs_ids(query_tokens_tfidf.keys())
+
         relevant_docs = [self.docs[i] for i in relevant_doc_ids]
         top_docs = [TopDoc(self.docs[i]) for i in relevant_doc_ids]
 
-        self.logger.debug("filtered: " + str(len(top_docs)) + " docs ( pool: " + str(len(self.docs)) + ")")
+        self.logger.debug("filtered: " + str(len(top_docs)) + " docs ( pool: " + str(len(self.docs)) + ") with tokens " + str(query_tokens_tfidf))
         tf_idf_scores = self.tf_idf.query(query_tokens, relevant_docs)
+
 
         for i in range(len(top_docs)):
             progbar(i, len(top_docs), 20)
@@ -108,7 +93,7 @@ class Indexer:
                                      )
 
             top_docs[i].calculate_score()
-
+        print(' ')
         top_docs.sort(key=lambda x: x.score, reverse=True)
 
         end = time.time()
@@ -116,7 +101,7 @@ class Indexer:
         return top_docs
 
     def load(self):
-        full_file_name = "data\\cache\\" + self.file_name + ".arp"
+        full_file_name = "data\\cache\\" + self.file_name + "_documents.arp"
 
         my_file = Path(full_file_name)
         if not my_file.is_file():
@@ -132,7 +117,7 @@ class Indexer:
             return True
 
     def save(self):
-        full_file_name = "data\\cache\\" + self.file_name + ".arp"
+        full_file_name = "data\\cache\\" + self.file_name + "_documents.arp"
         f = open(full_file_name, 'wb')
         pickle.dump(self.__dict__, f, 2)
         f.close()
