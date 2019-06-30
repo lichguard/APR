@@ -15,12 +15,13 @@ def run():
     #doc_source_file = "document_passages_shorten_2"
     #doc_source_file = "document_passages_shorten"
     doc_source_file = "document_passages"
-    query_string = "how vastly dense and diverse is the city of sao paulo?"
-    reindex = True
+    query_string = "Why is Baltimore historically a significant maritime city?"
+    reindex = False
 
     # load file from directory
     with open("data\\" + doc_source_file + ".json") as f:
         docs_json = json.load(f)
+
 
     docs_indexer = Documents_Indexer(doc_source_file + "_documents")
     docs_indexer.index({x: ' '.join(docs_json[x].values()) for x in docs_json}, reindex)
@@ -32,11 +33,13 @@ def run():
     doc_id = top_docs[0].doc.get_id()  # str(top_docs[0].get_doc().get_id())
     doc_id = str(doc_id)
     passages = docs_json[doc_id]
-    passage_indexer = Documents_Indexer(doc_source_file + "_doc_" + doc_id + "_passages")
-    passage_indexer.index(passages, reindex)
+    passage_indexer = Passages_Indexer(doc_source_file + "_doc_" + doc_id + "_passages")
+    passage_indexer.index(passages, True)
     top_passages = passage_indexer.execute_query(query_string)
     print("Passages: ")
     print(top_passages)
+    print(docs_json[str(doc_id)][str(top_passages[0].passage.get_id())])
+    print(process_and_tokenize_string(docs_json[str(doc_id)][str(top_passages[0].passage.get_id())]))
 
 
 def score_documents_retrival(docs_json, indexer):
@@ -63,6 +66,8 @@ def printquestions(docs_json):
     for i in range(200):
         print(" ")
         print(i)
+        print((qs.questions[i].question))
+        print((docs_json[str(qs.questions[i].document_id)][str(qs.questions[i].passages[0])]))
         print(process_and_tokenize_string(qs.questions[i].question))
         print(process_and_tokenize_string(docs_json[str(qs.questions[i].document_id)][str(qs.questions[i].passages[0])]))
 

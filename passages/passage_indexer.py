@@ -18,6 +18,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import defaultdict
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.metrics import pairwise_kernels
+from scipy.spatial.distance import cosine
 
 class TfidfEmbeddingVectorizer(object):
     def __init__(self, word2vec):
@@ -150,14 +152,21 @@ class Indexer:
 
         vectorizer = CountVectorizer(ngram_range=(1, 3),  tokenizer=dummy_func, preprocessor=dummy_func)
         vectorizer.fit(self.tokens_by_docs)
-        query_vector = vectorizer.transform(query_tokens)
-        #print(query_vector.toarray())
+        query_vector = vectorizer.transform([query_tokens])
+
+        weights = {}
+        for key in vectorizer.get_feature_names():
+            weights[key] = len(key.split())
+
         for i in range(len(top_docs)):
             progbar(i, len(top_docs), 20)
 
-            doc_vector = vectorizer.transform(top_docs[i].passage.get_tokens())
-            #print(doc_vector)
-            cosine_similarities = statistics.mean(linear_kernel(query_vector, doc_vector).flatten())
+            doc_vector = vectorizer.transform([top_docs[i].passage.get_tokens()])
+
+            cosine_similarities = linear_kernel(query_vector, doc_vector).flatten()
+            #cosine_similarities = sum(sum(pairwise_kernels(query_vector,
+            #     doc_vector,
+            #     metric='cosine')))
 
             top_docs[i].update_score(ScoreType.language_model, cosine_similarities)
             top_docs[i].calculate_score()
@@ -190,4 +199,6 @@ class Indexer:
         pickle.dump(self.__dict__, f, 2)
         f.close()
         self.logger.info("Successfully saved indexer data from " + full_file_name)
+
+
 
