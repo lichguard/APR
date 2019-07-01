@@ -2,4 +2,6 @@ from enum import Enum
 
 
 class ScoreType(Enum):
-    language_model = 0
+    ngram = 0
+    expanded_ngram = 1
+

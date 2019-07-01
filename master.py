@@ -7,7 +7,7 @@ from utils import process_and_tokenize_string
 
 
 def main():
-    logging.basicConfig(level=logging.NOTSET)
+    logging.basicConfig(level=logging.ERROR)
     run()
 
 
@@ -28,7 +28,7 @@ def run():
     #doc_source_file = "document_passages_shorten_2"
     #doc_source_file = "document_passages_shorten"
     doc_source_file = "document_passages"
-    query_string = r"How did Elvis perceive the music he had to sing in his movies?"
+    query_string = r"How were the Olympics games broadcasted?"
     reindex_documents = False
     reindex_passages = True
 
@@ -39,29 +39,34 @@ def run():
     #score_documents_retrieval(docs_json, docs_indexer, passage_indexer)
     #return
 
+    export_to_file(docs_json, docs_indexer, passage_indexer)
+    return
+
+
+
     docs = {x: ' '.join(docs_json[x].values()) for x in docs_json}
     docs_indexer.index(docs, reindex_documents)
     top_docs = docs_indexer.execute_query(query_string)
     print("Documents: ")
-    print(top_docs[0])
+    print(top_docs[0:3])
 
-    sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:1]}
+    sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
     passage_indexer.index(sliced_docs, reindex_passages)
     top_passages = passage_indexer.execute_query(query_string)
     print("Passages: ")
-    print(top_passages[0:5])
+    print(top_passages)
     print(docs_json[str(top_docs[0].doc.get_id())][str(top_passages[0].passage.get_id())])
     print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(top_passages[0].passage.get_id())]))
 
-    print(docs_json[str(top_docs[0].doc.get_id())][str(64)])
-    print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(64)]))
+    print(docs_json[str(top_docs[0].doc.get_id())][str(1)])
+    print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(1)]))
 
 
 def score_documents_retrieval(docs_json, document_indexer,passage_indexer):
 
     count = 0
-    start = 5
-    question_count = 1
+    start = 70
+    question_count = 20
     qs = load_questions('train.tsv')
     document_indexer.index(None, False)
 
@@ -69,7 +74,7 @@ def score_documents_retrieval(docs_json, document_indexer,passage_indexer):
 
         query = qs.questions[i]
         top_docs = document_indexer.execute_query(query.question)
-        sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:1]}
+        sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
         passage_indexer.index(sliced_docs, True)
         top_passages = passage_indexer.execute_query(query.question)
 
@@ -83,6 +88,42 @@ def score_documents_retrieval(docs_json, document_indexer,passage_indexer):
         #    print("Fail! Expected: " + str(qs.questions[i].document_id) + " Result: " + str(top_docs[0].doc.get_id()))
 
     #print("Final tally: " + str(count) + " correct out of " + str(questions) + "(" + str(count/questions) + ")")
+
+
+def export_to_file(docs_json, document_indexer,passage_indexer):
+    data = []
+    count = 0
+    start = 0
+    question_count = 200
+    qs = load_questions('test.tsv')
+    document_indexer.index(None, False)
+
+    for i in range(start, start + question_count):
+        query = qs.questions[i]
+        answers = []
+        response = dict()
+        response['id'] = query.qid
+        response['answers'] = answers
+        try:
+            print('Processing question: ' + str(query.qid) + " (" + str(i) + ")")
+            top_docs = document_indexer.execute_query(query.question)
+            sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
+            passage_indexer.index(sliced_docs, True)
+            top_passages = passage_indexer.execute_query(query.question)
+            for j in range(5):
+                answer = {'answer': str(top_passages[j].passage.get_doc_id()) + ':' + str(top_passages[j].passage.get_id()), 'score': str(top_passages[j].get_score())}
+                answers.append(answer)
+            data.append(response)
+        except:
+            pass
+
+
+
+        #print('\nExpected: document: ' + str(qs.questions[i].document_id) + " Passages: " + str(qs.questions[i].passages))
+        #print('Results:\n' + str(top_passages[0:10]))
+
+    with open('data\\answers.json', 'w', encoding='utf-8') as outfile:
+        json.dump(data, outfile, ensure_ascii=False, indent=2)
 
 
 def print_questions(docs_json):

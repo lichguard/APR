@@ -5,7 +5,7 @@ from gensim.corpora import Dictionary
 from pathlib import Path
 from passages.toppassage import TopPassage
 from passages.passage import Passage
-from utils import process_and_tokenize_string, progbar, dummy_func, wh_questions, split_strings
+from utils import process_and_tokenize_string, progbar, stem_tokens, get_processed_synonyms, dummy_func, wh_questions, split_strings, remove_stop_words
 from passages.scoretype import ScoreType
 # import cProfile
 from sklearn.feature_extraction.text import CountVectorizer
@@ -21,7 +21,8 @@ from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.metrics import pairwise_kernels
 from scipy.spatial.distance import cosine
 from passages.ngrams import Ngrams
-
+import nltk
+from nltk.corpus import wordnet
 
 class TfidfEmbeddingVectorizer(object):
     def __init__(self, word2vec):
@@ -138,19 +139,28 @@ class PassageIndexer:
         query_tokens = process_and_tokenize_string(query)
         unprocessed_query_tokens = split_strings(query)
         self.logger.info(" Executing Query: '" + str(query) + "'  ---- tokens:" +   str(query_tokens) )
-
+        top_docs = [TopPassage(doc) for doc in self.docs]
         question_class = -1
         for i, wh in enumerate(wh_questions):
             if wh in unprocessed_query_tokens:
                 question_class = i
                 break
 
-        top_docs = [TopPassage(doc) for doc in self.docs]
+        #pos_list = nltk.pos_tag(unprocessed_query_tokens)
+        tokens_synonyms = []
+        for token in remove_stop_words(unprocessed_query_tokens):
+            tokens_synonyms += get_processed_synonyms(token)
+
+        #print(tokens_synonyms)
+
         ngrams_vector = self.ngrams.query(query_tokens, self.docs)
+        expanded_ngram_vector = self.ngrams.query(tokens_synonyms, self.docs)
 
         for i in range(len(top_docs)):
             progbar(i, len(top_docs))
-            top_docs[i].update_score(ScoreType.language_model, ngrams_vector[i])
+            top_docs[i].update_score(ScoreType.ngram, ngrams_vector[i])
+            top_docs[i].update_score(ScoreType.expanded_ngram, expanded_ngram_vector[i])
+
             top_docs[i].calculate_score()
         print(' ')
         top_docs.sort(key=lambda x: x.score, reverse=True)

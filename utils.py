@@ -3,9 +3,13 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import Stemmer
 import re
+from nltk.corpus import wordnet
 
+#nltk.download('universal_tagset')
+#nltk.download('brown')
+#nltk.download('stopwords')
+#nltk.download('averaged_perceptron_tagger')
 
-nltk.download('stopwords')
 english_stemmer = Stemmer.Stemmer('en')
 stop_words = set(stopwords.words('english'))
 stop_words.add(",")
@@ -36,9 +40,26 @@ def process_and_tokenize_string(data):
     """
 
     #     return data.split(" ")
-    tokens = english_stemmer.stemWords(split_strings(re.sub(r'[^a-zA-Z0-9\s]', '', data)))
-    return [word for word in tokens if word not in stop_words]
+    tokens = split_strings(re.sub(r'[^a-zA-Z0-9\s]', '', data))
+    tokens = remove_stop_words(tokens)
+    return stem_tokens(tokens)
     # return english_stemmer.stemWords(word_tokenize(data.lower()))
+
+
+def remove_stop_words(tokens):
+    return [word for word in tokens if word not in stop_words]
+
+
+def stem_tokens(tokens):
+    return english_stemmer.stemWords(tokens)
+
+
+def get_processed_synonyms(word):
+    synonyms = []
+    for syn in wordnet.synsets(word):
+        for l in syn.lemmas():
+            synonyms += process_and_tokenize_string(l.name().replace('_', ' '))
+    return synonyms
 
 
 def split_strings(data):

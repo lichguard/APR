@@ -18,8 +18,11 @@ class TopPassage:
 
     def calculate_score(self):
         self.score = 0
-        self.score += self.scores[ScoreType.language_model] * 1.0
-        # self.score += self.scores[ScoreType.proximity] * 0.2
+        self.score += self.scores[ScoreType.ngram] * 0.8
+        self.score += self.scores[ScoreType.expanded_ngram] * 0.2
+
+    def get_score(self):
+        return self.score
 
     def __str__(self):
         output = "Document:  " + str(self.passage.get_doc_id()) + " Passage: " + str(self.passage.get_id()) + " Score " + str(self.score)
