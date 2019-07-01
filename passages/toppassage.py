@@ -1,6 +1,5 @@
 from collections import defaultdict
 from passages.scoretype import ScoreType
-import operator
 
 
 class TopPassage:

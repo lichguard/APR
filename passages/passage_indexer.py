@@ -5,24 +5,14 @@ from gensim.corpora import Dictionary
 from pathlib import Path
 from passages.toppassage import TopPassage
 from passages.passage import Passage
-from utils import process_and_tokenize_string, progbar, stem_tokens, get_processed_synonyms, dummy_func, wh_questions, split_strings, remove_stop_words
+from utils import process_and_tokenize_string, progbar, get_processed_synonyms, wh_questions, split_strings, remove_stop_words
 from passages.scoretype import ScoreType
-# import cProfile
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics.pairwise import linear_kernel
-import statistics
-from sklearn import svm
-import gensim
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import defaultdict
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.metrics import pairwise_kernels
-from scipy.spatial.distance import cosine
 from passages.ngrams import Ngrams
-import nltk
-from nltk.corpus import wordnet
+# import cProfile
+
 
 class TfidfEmbeddingVectorizer(object):
     def __init__(self, word2vec):
@@ -51,6 +41,7 @@ class TfidfEmbeddingVectorizer(object):
                 for words in X
             ])
 
+
 class MeanEmbeddingVectorizer(object):
     def __init__(self, word2vec):
         self.word2vec = word2vec
@@ -70,27 +61,6 @@ class MeanEmbeddingVectorizer(object):
 
 
 class PassageIndexer:
-    """
-      A class used to index DocumentStore
-
-      Attributes
-      ----------
-      logger : Logger
-          a formatted string to print out what the animal says
-      posting_list : PostingList
-          a formatted string to print out what the animal says
-      document_store : Document
-          will be written
-      tf_idf_vectorizer : StemmedTfidfVectorizer
-          the sound that the animal makes
-      tf_idf : sparse matrix, [n_samples, n_features]]
-          the number of legs the animal has (default 4)
-
-      Methods
-      -------
-      index(DocumentStore)
-          Prints the animals name and what sound it makes
-      """
     logger = logging.getLogger('Indexer')
 
     def __init__(self, file_name=None):
@@ -100,7 +70,6 @@ class PassageIndexer:
         self.tokens_by_docs = None
         self.docs = None
         self.file_name = file_name
-
 
     def index(self, docs, reindex=True):
         if not reindex:
@@ -113,8 +82,8 @@ class PassageIndexer:
             self.dictionary = Dictionary(self.tokens_by_docs)
             self.ngrams = Ngrams(self.tokens_by_docs)
 
-            if self.file_name:
-                self.save()
+            #if self.file_name:
+            #    self.save()
 
     def create_from_docs(self, docs_json):
         # time and log

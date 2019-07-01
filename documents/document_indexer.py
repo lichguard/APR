@@ -5,7 +5,7 @@ from gensim.corpora import Dictionary
 from pathlib import Path
 from documents.topdoc import TopDoc
 from documents.document import Document
-from utils import process_and_tokenize_string, progbar, generate_ngrams
+from utils import process_and_tokenize_string, progbar
 from documents.scoretype import ScoreType
 from documents.postinglist import PostingList
 from documents.tfidf import TfIdf

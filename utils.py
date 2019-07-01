@@ -4,22 +4,33 @@ from nltk.tokenize import word_tokenize
 import Stemmer
 import re
 from nltk.corpus import wordnet
+from QuestionStore import QuestionManager
+import json
 
-#nltk.download('universal_tagset')
-#nltk.download('brown')
-#nltk.download('stopwords')
-#nltk.download('averaged_perceptron_tagger')
-
+nltk.download('wordnet')
+nltk.download('stopwords')
 english_stemmer = Stemmer.Stemmer('en')
 stop_words = set(stopwords.words('english'))
 stop_words.add(",")
 stop_words.add(".")
 stop_words.add("?")
-
 wh_questions = ['who', 'what', 'how', 'where', 'when', 'why', 'which', 'whom', 'whose']
+
 
 def dummy_func(doc):
     return doc
+
+
+def load_questions(question_source_file):
+    qs = QuestionManager()
+    qs.create("data\\" + question_source_file)
+    return qs
+
+
+def load_json_from_file(doc_source_file):
+    with open("data\\" + doc_source_file + ".json", 'r', encoding='utf-8') as f:
+        docs_json = json.load(f)
+    return docs_json
 
 
 def progbar(curr, total, full_progbar=20):

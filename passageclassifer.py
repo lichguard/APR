@@ -1,5 +1,4 @@
 import logging
-import time
 import pickle
 from pathlib import Path
 from sklearn import svm
