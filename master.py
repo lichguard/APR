@@ -6,13 +6,11 @@ from utils import process_and_tokenize_string, load_json_from_file, load_questio
 
 
 def main():
-    logging.basicConfig(level=logging.ERROR)
+    logging.basicConfig(level=logging.NOTSET)
     run()
 
 
 #SETTINGS
-#doc_source_file = "document_passages_shorten_2"
-#doc_source_file = "document_passages_shorten"
 doc_source_file = "document_passages"
 query_string = r"How were the Olympics games broadcasted?"
 reindex_documents = True
@@ -34,14 +32,14 @@ def score_documents_retrieval(docs_json, document_indexer,passage_indexer):
     count = 0
     start = 70
     question_count = 20
-    qs = load_questions('train.tsv')
+    qs = load_questions('test.tsv')
     document_indexer.index(None, False)
 
     for i in range(start, start + question_count):
 
         query = qs.questions[i]
         top_docs = document_indexer.execute_query(query.question)
-        sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
+        sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:3]}
         passage_indexer.index(sliced_docs, True)
         top_passages = passage_indexer.execute_query(query.question)
 
@@ -62,9 +60,9 @@ def single_query(docs_json, document_indexer, passage_indexer):
     document_indexer.index(docs, reindex_documents)
     top_docs = document_indexer.execute_query(query_string)
     print("Documents: ")
-    print(top_docs[0:3])
+    print(top_docs[0:5])
 
-    sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
+    sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:3]}
     passage_indexer.index(sliced_docs, reindex_passages)
     top_passages = passage_indexer.execute_query(query_string)
     print("Passages: ")
@@ -72,8 +70,8 @@ def single_query(docs_json, document_indexer, passage_indexer):
     print(docs_json[str(top_docs[0].doc.get_id())][str(top_passages[0].passage.get_id())])
     print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(top_passages[0].passage.get_id())]))
 
-    print(docs_json[str(top_docs[0].doc.get_id())][str(1)])
-    print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(1)]))
+    #print(docs_json[str(top_docs[0].doc.get_id())][str(1)])
+    #print(process_and_tokenize_string(docs_json[str(top_docs[0].doc.get_id())][str(1)]))
 
 
 def export_to_file(docs_json, document_indexer,passage_indexer):
@@ -85,7 +83,7 @@ def export_to_file(docs_json, document_indexer,passage_indexer):
     start = 0
     question_count = len(data)
     qs = load_questions('test.tsv')
-    document_indexer.index(None, reindex_documents)
+    document_indexer.index(docs_json, reindex_documents)
 
     for i in range(start, start + question_count):
         query = qs.questions[i]
@@ -96,7 +94,7 @@ def export_to_file(docs_json, document_indexer,passage_indexer):
         try:
             print('Processing question: ' + str(query.qid) + " (" + str(i) + ")")
             top_docs = document_indexer.execute_query(query.question)
-            sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
+            sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:3]}
             passage_indexer.index(sliced_docs, False)
             top_passages = passage_indexer.execute_query(query.question)
             for j in range(5):
