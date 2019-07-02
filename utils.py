@@ -9,6 +9,7 @@ import json
 
 nltk.download('wordnet')
 nltk.download('stopwords')
+nltk.download('punkt')
 english_stemmer = Stemmer.Stemmer('en')
 stop_words = set(stopwords.words('english'))
 stop_words.add(",")

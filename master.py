@@ -13,7 +13,7 @@ def main():
 #SETTINGS
 doc_source_file = "document_passages"
 query_string = r"How were the Olympics games broadcasted?"
-reindex_documents = True
+reindex_documents = False
 reindex_passages = True
 
 
@@ -24,7 +24,7 @@ def run():
 
     #score_documents_retrieval(docs_json, docs_indexer, passage_indexer)
     export_to_file(docs_json, docs_indexer, passage_indexer)
-    single_query(docs_json, docs_indexer, passage_indexer)
+    #single_query(docs_json, docs_indexer, passage_indexer)
 
 
 def score_documents_retrieval(docs_json, document_indexer,passage_indexer):
@@ -81,10 +81,10 @@ def export_to_file(docs_json, document_indexer,passage_indexer):
 
     data = []  # load_json_from_file('answers')
     start = 0
-    question_count = len(data)
+
     qs = load_questions('test.tsv')
     document_indexer.index(docs_json, reindex_documents)
-
+    question_count = len(qs.questions)
     for i in range(start, start + question_count):
         query = qs.questions[i]
         answers = []
@@ -94,7 +94,7 @@ def export_to_file(docs_json, document_indexer,passage_indexer):
         try:
             print('Processing question: ' + str(query.qid) + " (" + str(i) + ")")
             top_docs = document_indexer.execute_query(query.question)
-            sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:3]}
+            sliced_docs = {top_doc.doc.get_id(): docs_json[str(top_doc.doc.get_id())] for top_doc in top_docs[0:2]}
             passage_indexer.index(sliced_docs, False)
             top_passages = passage_indexer.execute_query(query.question)
             for j in range(5):
@@ -102,7 +102,7 @@ def export_to_file(docs_json, document_indexer,passage_indexer):
                 answers.append(answer)
             data.append(response)
         except Exception as e:
-            print(e.message)
+            print("error")
 
     with open('data\\answers.json', 'w', encoding='utf-8') as outfile:
         json.dump(data, outfile, ensure_ascii=False, indent=2)
